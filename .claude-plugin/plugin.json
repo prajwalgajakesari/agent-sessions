@@ -1,0 +1,13 @@
+{
+  "name": "sessions",
+  "version": "0.1.0",
+  "description": "Share Claude Code sessions through git. /sessions:push commits a handoff summary plus a redacted transcript under .claude/sessions/ on your branch; /sessions:pull loads teammates' sessions into your chat; /sessions:init prepares a repo.",
+  "author": {
+    "name": "Prajwal P",
+    "url": "https://github.com/prajwalgajakesari"
+  },
+  "homepage": "https://github.com/prajwalgajakesari/claude-sessions",
+  "repository": "https://github.com/prajwalgajakesari/claude-sessions",
+  "license": "MIT",
+  "keywords": ["claude-code", "plugin", "sessions", "handoff", "transcript", "team", "knowledge-sharing"]
+}

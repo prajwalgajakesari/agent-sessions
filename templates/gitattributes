@@ -1,0 +1,2 @@
+# Rendered transcripts are written with LF; keep them that way on every OS.
+* text eol=lf
