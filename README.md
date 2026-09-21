@@ -92,7 +92,7 @@ The JSONL format is internal to Claude Code and changes between versions. The re
 .claude-plugin/plugin.json       plugin manifest (name: sessions)
 .claude-plugin/marketplace.json  this repo is its own marketplace
 skills/{push,pull,init}/SKILL.md the three skills
-scripts/sessions.py              locate | export | commit | list | init (stdlib only)
+scripts/sessions.py              locate | write-summary | export | commit | list | init (stdlib only)
 scripts/sessions.sh              interpreter shim, always exits 0, prints STATUS
 scripts/setup.sh, setup.ps1      teammate bootstrap
 templates/                       summary template, repo README, .gitattributes

@@ -168,6 +168,9 @@ class ExportBase(unittest.TestCase):
         out.mkdir(parents=True, exist_ok=True)
         (out / "summary.md").write_text(summary or (ROOT / "templates" / "summary.md").read_text(encoding="utf-8"), encoding="utf-8")
         code, text = run(["export", "--transcript", path, "--out", str(out)] + (extra or []))
+        for line in text.split("\n"):
+            if line.startswith("SESSION_DIR: "):
+                out = Path(line[len("SESSION_DIR: "):])
         transcript = ""
         for f in sorted(out.glob("transcript*.md")):
             transcript += f.read_text(encoding="utf-8")
@@ -319,6 +322,101 @@ class TestRendering(ExportBase):
         self.assertEqual(fm["tags"], ["fabric", "data-modelling"])
         self.assertEqual(meta["outcome"], "Tables reconciled")
         self.assertEqual(meta["title"], "Reconcile fabric tables")
+
+    def test_export_renames_dir_to_final_title_until_tracked(self):
+        b = Builder(cwd=self.repo)
+        b.user("q")
+        b.text("a")
+        summary = "---\ntitle: \"Real Title Here\"\n---\n\n## Goal\nx\n"
+        code, text, transcript, meta, out = self.export(b, summary=summary, name=f"2026-09-21_untitled-session_test-user_{b.sid[:8]}")
+        self.assertEqual(code, 0, text)
+        self.assertIn("RENAMED: yes", text)
+        self.assertEqual(out.name, f"2026-09-21_real-title-here_test-user_{b.sid[:8]}")
+        self.assertFalse(Path(self.repo, S.SESSIONS_REL, f"2026-09-21_untitled-session_test-user_{b.sid[:8]}").exists())
+        self.assertEqual(meta["dir"], out.name)
+        code, text = run(["commit", "--dir", str(out)])
+        self.assertEqual(code, 0, text)
+        (out / "summary.md").write_text("---\ntitle: \"Changed Title\"\n---\n\n## Goal\ny\n", encoding="utf-8")
+        path = b.write(self.transcripts)
+        code, text = run(["export", "--transcript", path, "--out", str(out)])
+        self.assertEqual(code, 0, text)
+        self.assertIn("RENAMED: no", text)
+        self.assertTrue(out.exists())
+
+    def test_write_summary_subcommand(self):
+        out = Path(self.repo, S.SESSIONS_REL, "2026-09-21_x_test-user_abcdef12")
+        old_stdin = sys.stdin
+        try:
+            sys.stdin = io.StringIO("\n---\ntitle: \"T\"\n---\n\n## Goal\nfrom stdin\n\n")
+            code, text = run(["write-summary", "--out", str(out)])
+            self.assertEqual(code, 0, text)
+            self.assertEqual((out / "summary.md").read_text(encoding="utf-8"), "---\ntitle: \"T\"\n---\n\n## Goal\nfrom stdin\n")
+            sys.stdin = io.StringIO("no frontmatter here\n")
+            code, text = run(["write-summary", "--out", str(out)])
+            self.assertEqual(code, 1)
+            sys.stdin = io.StringIO("---\ntitle: \"T\"\n---\n" + "\n".join(["x"] * 200))
+            code, text = run(["write-summary", "--out", str(out)])
+            self.assertEqual(code, 1)
+            self.assertIn("exceeds the cap", text)
+        finally:
+            sys.stdin = old_stdin
+
+    def test_locate_fallback_prefers_transcript_with_push_marker(self):
+        cfg = os.path.join(self.tmp, "cfg")
+        proj = os.path.join(cfg, "projects", "-x")
+        os.makedirs(proj)
+        old = dict(os.environ)
+        os.environ["CLAUDE_CONFIG_DIR"] = cfg
+        for k in ("CLAUDE_CODE_SESSION_ID", "CLAUDE_SESSION_ID"):
+            os.environ.pop(k, None)
+        try:
+            live = Builder(cwd=self.repo)
+            live.user("working")
+            live.text("ok")
+            live.user("<command-name>/sessions:push</command-name>")
+            live_path = live.write(proj)
+            other = Builder(cwd=self.repo)
+            other.user("parallel session")
+            other.text("ok")
+            other_path = other.write(proj)
+            os.utime(live_path, (1_800_000_000, 1_800_000_000))
+            os.utime(other_path, (1_800_000_100, 1_800_000_100))  # newer, but no push marker
+            code, text = run(["locate", "--project-dir", self.repo])
+            self.assertEqual(code, 0, text)
+            self.assertIn(f"SESSION_ID: {live.sid}", text)
+            self.assertIn("contains the /sessions:push command", text)
+        finally:
+            os.environ.clear()
+            os.environ.update(old)
+
+    def test_export_reresolves_transcript_by_session_id(self):
+        cfg = os.path.join(self.tmp, "cfg")
+        proj = os.path.join(cfg, "projects", "-x")
+        os.makedirs(proj)
+        old = dict(os.environ)
+        os.environ["CLAUDE_CONFIG_DIR"] = cfg
+        try:
+            wrong = Builder(cwd=self.repo)
+            wrong.user("WRONG SESSION")
+            wrong.text("nope")
+            wrong_path = wrong.write(proj)
+            live = Builder(cwd=self.repo)
+            live.user("RIGHT SESSION")
+            live.text("yes")
+            live.write(proj)
+            out = Path(self.repo, S.SESSIONS_REL, f"2026-09-21_x_test-user_{live.sid[:8]}")
+            out.mkdir(parents=True)
+            (out / "summary.md").write_text("---\ntitle: \"T\"\n---\n\n## Goal\nx\n", encoding="utf-8")
+            code, text = run(["export", "--transcript", wrong_path, "--out", str(out), "--session-id", live.sid])
+            self.assertEqual(code, 0, text)
+            self.assertIn("TRANSCRIPT_SWITCHED", text)
+            final = Path(self.repo, S.SESSIONS_REL, f"2026-09-21_t_test-user_{live.sid[:8]}")
+            body = (final / "transcript.md").read_text(encoding="utf-8")
+            self.assertIn("RIGHT SESSION", body)
+            self.assertNotIn("WRONG SESSION", body)
+        finally:
+            os.environ.clear()
+            os.environ.update(old)
 
     def test_summary_cap(self):
         b = Builder(cwd=self.repo)
@@ -492,8 +590,16 @@ class TestLocate(unittest.TestCase):
         self.assertIn("/sessions:init", text)
         self.assertIn("STATUS: error", text)
 
-    def test_locate_missing_transcript(self):
+    def test_locate_known_id_not_yet_on_disk_proceeds_without_outline(self):
         code, text = run(["locate", "--session-id", "00000000-0000-0000-0000-000000000000", "--project-dir", self.repo])
+        self.assertEqual(code, 0, text)
+        self.assertIn("FOUND_BY: not written yet", text)
+        self.assertIn("SESSION_ID: 00000000-0000-0000-0000-000000000000", text)
+        self.assertIn("not on disk yet", text)
+        self.assertIn("Prompts (0)", text)
+
+    def test_locate_unknown_id_and_no_match_is_error(self):
+        code, text = run(["locate", "--project-dir", self.repo])
         self.assertEqual(code, 1)
         self.assertIn("transcript not found", text)
 
