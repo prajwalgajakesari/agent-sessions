@@ -20,18 +20,19 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "sessions.py"
 SHIM = ROOT / "scripts" / "sessions.sh"
 
-spec = importlib.util.spec_from_file_location("sessions", SCRIPT)
-S = importlib.util.module_from_spec(spec)
-assert spec.loader is not None
-spec.loader.exec_module(S)
+sys.path.insert(0, str(ROOT))
+import agent_sessions  # noqa: E402
+from agent_sessions import core as S  # noqa: E402
+from agent_sessions.cli import main as cli_main  # noqa: E402
 
 UTC = dt.timezone.utc
+VERSION = agent_sessions.__version__
 
 
 def run(argv):
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        code = S.main(argv)
+        code = cli_main(argv)
     return code, buf.getvalue()
 
 
@@ -166,7 +167,7 @@ class ExportBase(unittest.TestCase):
         path = builder.write(self.transcripts)
         out = Path(self.repo, S.SESSIONS_REL, name)
         out.mkdir(parents=True, exist_ok=True)
-        (out / "summary.md").write_text(summary or (ROOT / "templates" / "summary.md").read_text(encoding="utf-8"), encoding="utf-8")
+        (out / "summary.md").write_text(summary or (ROOT / "agent_sessions" / "templates" / "summary.md").read_text(encoding="utf-8"), encoding="utf-8")
         code, text = run(["export", "--transcript", path, "--out", str(out)] + (extra or []))
         for line in text.split("\n"):
             if line.startswith("SESSION_DIR: "):
@@ -309,7 +310,7 @@ class TestRendering(ExportBase):
         b.title("Reconcile fabric tables")
         b.user("q")
         b.text("a")
-        summary = (ROOT / "templates" / "summary.md").read_text(encoding="utf-8")
+        summary = (ROOT / "agent_sessions" / "templates" / "summary.md").read_text(encoding="utf-8")
         summary = summary.replace("[<area>, <kind-of-work>]", "[fabric, Data Modelling]").replace(
             '"<one sentence: what is true now that was not before>"', '"Tables reconciled"')
         code, text, transcript, meta, out = self.export(b, summary=summary)
@@ -381,10 +382,10 @@ class TestRendering(ExportBase):
             other_path = other.write(proj)
             os.utime(live_path, (1_800_000_000, 1_800_000_000))
             os.utime(other_path, (1_800_000_100, 1_800_000_100))  # newer, but no push marker
-            code, text = run(["locate", "--project-dir", self.repo])
+            code, text = run(["locate", "--agent", "claude-code", "--project-dir", self.repo])
             self.assertEqual(code, 0, text)
             self.assertIn(f"SESSION_ID: {live.sid}", text)
-            self.assertIn("contains the /sessions:push command", text)
+            self.assertIn("FOUND_BY: push marker in latest user turn", text)
         finally:
             os.environ.clear()
             os.environ.update(old)
@@ -407,9 +408,10 @@ class TestRendering(ExportBase):
             out = Path(self.repo, S.SESSIONS_REL, f"2026-09-21_x_test-user_{live.sid[:8]}")
             out.mkdir(parents=True)
             (out / "summary.md").write_text("---\ntitle: \"T\"\n---\n\n## Goal\nx\n", encoding="utf-8")
-            code, text = run(["export", "--transcript", wrong_path, "--out", str(out), "--session-id", live.sid])
+            code, text = run(["export", "--agent", "claude-code", "--transcript", wrong_path, "--out", str(out), "--session-id", live.sid])
             self.assertEqual(code, 0, text)
             self.assertIn("TRANSCRIPT_SWITCHED", text)
+            self.assertIn("AGENT: claude-code", text)
             final = Path(self.repo, S.SESSIONS_REL, f"2026-09-21_t_test-user_{live.sid[:8]}")
             body = (final / "transcript.md").read_text(encoding="utf-8")
             self.assertIn("RIGHT SESSION", body)
@@ -555,9 +557,11 @@ class TestLocate(unittest.TestCase):
         b.tool_result(tid, "ok")
         b.text("done")
         b.write(self.proj)
-        code, text = run(["locate", "--session-id", b.sid, "--project-dir", self.repo])
+        code, text = run(["locate", "--agent", "claude-code", "--session-id", b.sid, "--project-dir", self.repo])
         self.assertEqual(code, 0, text)
         self.assertIn("FOUND_BY: session id", text)
+        self.assertIn("AGENT: claude-code", text)
+        self.assertIn("SHORT_ID: " + b.sid[:8], text)
         self.assertIn("TITLE_DEFAULT: Locate me", text)
         self.assertIn("HANDLE: test-user", text)
         self.assertIn("first prompt about parsers", text)
@@ -574,9 +578,9 @@ class TestLocate(unittest.TestCase):
         mine.text("y")
         path = mine.write(self.proj)
         os.utime(path, None)
-        code, text = run(["locate", "--project-dir", self.repo])
+        code, text = run(["locate", "--agent", "claude-code", "--project-dir", self.repo])
         self.assertEqual(code, 0, text)
-        self.assertIn("newest transcript for this repo", text)
+        self.assertIn("FOUND_BY: only recent session for this repo", text)
         self.assertIn(f"SESSION_ID: {mine.sid}", text)
 
     def test_locate_blocked_when_ignored(self):
@@ -585,23 +589,54 @@ class TestLocate(unittest.TestCase):
         b.user("x")
         b.text("y")
         b.write(self.proj)
-        code, text = run(["locate", "--session-id", b.sid, "--project-dir", self.repo])
+        code, text = run(["locate", "--agent", "claude-code", "--session-id", b.sid, "--project-dir", self.repo])
         self.assertEqual(code, 1)
         self.assertIn("/sessions:init", text)
         self.assertIn("STATUS: error", text)
 
     def test_locate_known_id_not_yet_on_disk_proceeds_without_outline(self):
-        code, text = run(["locate", "--session-id", "00000000-0000-0000-0000-000000000000", "--project-dir", self.repo])
+        code, text = run(["locate", "--agent", "claude-code", "--session-id", "00000000-0000-0000-0000-000000000000", "--project-dir", self.repo])
         self.assertEqual(code, 0, text)
         self.assertIn("FOUND_BY: not written yet", text)
         self.assertIn("SESSION_ID: 00000000-0000-0000-0000-000000000000", text)
+        self.assertIn("AGENT: claude-code", text)
         self.assertIn("not on disk yet", text)
         self.assertIn("Prompts (0)", text)
+        self.assertTrue(text.startswith("STATUS: ok"), "STATUS must be the first line too")
 
     def test_locate_unknown_id_and_no_match_is_error(self):
-        code, text = run(["locate", "--project-dir", self.repo])
+        code, text = run(["locate", "--agent", "claude-code", "--project-dir", self.repo])
         self.assertEqual(code, 1)
-        self.assertIn("transcript not found", text)
+        self.assertIn("no session found", text)
+
+    def test_locate_ambiguous_lists_candidates(self):
+        for i in range(2):
+            b = Builder(cwd=self.repo)
+            b.title(f"Parallel {i}")
+            b.user("working")
+            b.text("ok")
+            b.write(self.proj)
+        code, text = run(["locate", "--agent", "claude-code", "--project-dir", self.repo])
+        self.assertEqual(code, 1)
+        self.assertIn("CANDIDATES:", text)
+        self.assertIn("Parallel 0", text)
+        self.assertIn("Parallel 1", text)
+        self.assertIn("--session-id", text)
+
+    def test_locate_self_referencing_call_wins(self):
+        for i in range(2):
+            b = Builder(cwd=self.repo)
+            b.title(f"Parallel {i}")
+            b.user("working")
+            if i == 1:
+                b.tool_use("Bash", {"command": 'bash "/x/scripts/sessions.sh" locate --agent auto --project-dir .', "description": "preflight"})
+            else:
+                b.text("ok")
+            b.write(self.proj)
+        code, text = run(["locate", "--agent", "claude-code", "--project-dir", self.repo])
+        self.assertEqual(code, 0, text)
+        self.assertIn("FOUND_BY: self-referencing locate call", text)
+        self.assertIn("TITLE_DEFAULT: Parallel 1", text)
 
 
 class TestCommit(unittest.TestCase):
@@ -762,8 +797,8 @@ class TestInit(unittest.TestCase):
         self.assertIsNone(S.path_is_ignored(self.repo, ".claude/settings.json"))
         self.assertIsNotNone(S.path_is_ignored(self.repo, ".claude/other.json"))
         settings = json.loads(Path(self.repo, ".claude", "settings.json").read_text(encoding="utf-8"))
-        self.assertEqual(settings["extraKnownMarketplaces"]["claude-sessions"]["source"]["repo"], "prajwalgajakesari/claude-sessions")
-        self.assertTrue(settings["enabledPlugins"]["sessions@claude-sessions"])
+        self.assertEqual(settings["extraKnownMarketplaces"]["agent-sessions"]["source"]["repo"], "prajwalgajakesari/agent-sessions")
+        self.assertTrue(settings["enabledPlugins"]["sessions@agent-sessions"])
         self.assertTrue(settings["enabledPlugins"]["other@market"])
         self.assertEqual(settings["permissions"], {"allow": ["Read"]})
         self.assertEqual(len(settings["_comment"]), 2)
@@ -783,7 +818,7 @@ class TestInit(unittest.TestCase):
         code, text = run(["init", "--project-dir", self.repo])
         self.assertEqual(code, 0, text)
         settings = json.loads(Path(self.repo, ".claude", "settings.json").read_text(encoding="utf-8"))
-        self.assertEqual(settings["enabledPlugins"], ["x@y", "sessions@claude-sessions"])
+        self.assertEqual(settings["enabledPlugins"], ["x@y", "sessions@agent-sessions"])
         self.assertIn("NEXT: review", text)
 
     def test_init_refuses_rule_outside_gitignore(self):
@@ -800,7 +835,7 @@ class TestShim(unittest.TestCase):
     def test_shim_runs_python(self):
         p = subprocess.run(["bash", str(SHIM), "--version"], capture_output=True, text=True)
         self.assertEqual(p.returncode, 0)
-        self.assertIn(f"claude-sessions {S.PLUGIN_VERSION}", p.stdout + p.stderr)
+        self.assertIn(f"agent-sessions {VERSION}", p.stdout + p.stderr)
 
     def test_shim_without_python_reports_status_and_exits_zero(self):
         bash = shutil.which("bash")

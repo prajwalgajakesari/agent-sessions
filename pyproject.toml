@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent-sessions-cli"
+dynamic = ["version"]
+description = "Share coding-agent sessions (Claude Code, Codex CLI, OpenCode, Gemini CLI) with your team through git."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "Prajwal P" }]
+keywords = ["claude-code", "codex", "opencode", "gemini-cli", "sessions", "handoff", "transcript", "team", "git"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Software Development",
+  "Topic :: Software Development :: Version Control :: Git",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/prajwalgajakesari/agent-sessions"
+Repository = "https://github.com/prajwalgajakesari/agent-sessions"
+Changelog = "https://github.com/prajwalgajakesari/agent-sessions/blob/main/CHANGELOG.md"
+Issues = "https://github.com/prajwalgajakesari/agent-sessions/issues"
+
+[project.scripts]
+agent-sessions = "agent_sessions.cli:entry"
+
+[tool.hatch.version]
+path = "agent_sessions/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agent_sessions"]
+
+[tool.hatch.build.targets.sdist]
+include = ["agent_sessions", "README.md", "LICENSE", "CHANGELOG.md", "pyproject.toml"]

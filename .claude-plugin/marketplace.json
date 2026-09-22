@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "claude-sessions",
-  "description": "Share Claude Code sessions with your team through the git repo you already work in.",
+  "name": "agent-sessions",
+  "description": "Share coding-agent sessions with your team through the git repo you already work in.",
   "owner": {
     "name": "Prajwal P",
     "url": "https://github.com/prajwalgajakesari"
@@ -9,16 +9,16 @@
   "plugins": [
     {
       "name": "sessions",
-      "description": "Share Claude Code sessions through git. /sessions:push commits a handoff summary plus a redacted transcript under .claude/sessions/ on your branch; /sessions:pull loads teammates' sessions into your chat; /sessions:init prepares a repo.",
-      "version": "0.1.0",
+      "description": "Share coding-agent sessions through git. /sessions:push commits a handoff summary plus a redacted transcript under .claude/sessions/ on your branch; /sessions:pull loads teammates' sessions (from Claude Code, Codex, OpenCode or Gemini CLI) into your chat; /sessions:init prepares a repo.",
+      "version": "0.2.0",
       "category": "productivity",
       "source": {
         "source": "url",
-        "url": "https://github.com/prajwalgajakesari/claude-sessions.git"
+        "url": "https://github.com/prajwalgajakesari/agent-sessions.git"
       },
-      "homepage": "https://github.com/prajwalgajakesari/claude-sessions",
+      "homepage": "https://github.com/prajwalgajakesari/agent-sessions",
       "license": "MIT",
-      "keywords": ["sessions", "handoff", "transcript", "team", "knowledge-sharing"]
+      "keywords": ["sessions", "handoff", "transcript", "team", "knowledge-sharing", "codex", "opencode"]
     }
   ]
 }
