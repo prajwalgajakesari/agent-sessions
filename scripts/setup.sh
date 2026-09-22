@@ -10,14 +10,14 @@
 # Everything here is also doable from inside an agent:
 #   Claude Code:  /plugin marketplace add prajwalgajakesari/agent-sessions
 #                 /plugin install sessions@agent-sessions
-#   Others:       copy agents-skills/agent-sessions/ to ~/.agents/skills/agent-sessions/
+#   Others:       copy .agents/skills/agent-sessions/ to ~/.agents/skills/agent-sessions/
 set -uo pipefail
 
 MARKET="prajwalgajakesari/agent-sessions"
 PLUGIN="sessions@agent-sessions"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$here/.." && pwd)"
-skill_src="$repo_root/agents-skills/agent-sessions"
+skill_src="$repo_root/.agents/skills/agent-sessions"
 skill_dst="${AGENT_SKILLS_DIR:-$HOME/.agents/skills}/agent-sessions"
 
 do_claude=0; do_skills=0; repo_dir=""

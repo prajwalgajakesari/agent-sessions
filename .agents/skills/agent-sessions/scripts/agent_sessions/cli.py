@@ -60,7 +60,7 @@ def detected_unsupported() -> List[Tuple[str, str, str]]:
 
 def portable_skill_dir() -> Optional[str]:
     """The portable skill folder, from a checkout or from inside a bundle."""
-    for cand in (PACKAGE_DIR.parent / "agents-skills" / "agent-sessions", PACKAGE_DIR.parent.parent):
+    for cand in (PACKAGE_DIR.parent / ".agents" / "skills" / "agent-sessions", PACKAGE_DIR.parent.parent):
         if (cand / "SKILL.md").exists() and (cand / "scripts").is_dir():
             return str(cand)
     return None

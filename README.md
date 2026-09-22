@@ -27,7 +27,7 @@ Pull reads `summary.md` first and loads a transcript only when asked, so a teamm
 | You use | Do this once |
 |---|---|
 | Claude Code | `/plugin marketplace add prajwalgajakesari/agent-sessions` then `/plugin install sessions@agent-sessions`. Repos set up with `init` prompt you automatically. |
-| Codex CLI, OpenCode, Gemini CLI, Cursor, Copilot | `scripts/setup.sh --skills` (or `scripts\setup.ps1 -Skills`) from a checkout. It copies the `agent-sessions` skill into `~/.agents/skills/`, which all of them read. |
+| Codex CLI, OpenCode, Gemini CLI, Cursor, Copilot | `npx skills add prajwalgajakesari/agent-sessions --skill agent-sessions -g`, or `scripts/setup.sh --skills` (or `scripts\setup.ps1 -Skills`) from a checkout. Either puts the `agent-sessions` skill into `~/.agents/skills/`, which all of them read. The three other skills the CLI lists (`push`, `pull`, `init`) are the Claude plugin's and only work inside Claude Code. |
 | Any terminal | `pip install agent-sessions-cli` or `uvx agent-sessions-cli`, then `agent-sessions doctor`. |
 
 Requirements: git and Python 3.9+ (`python3`, `python`, or the Windows `py` launcher). No Python packages.
@@ -100,13 +100,13 @@ agent_sessions/                   the package (stdlib only): cli.py, core.py, mo
 scripts/sessions.py, sessions.sh  entry point + shim (finds Python, always exits 0, prints STATUS)
 scripts/setup.sh, setup.ps1       teammate bootstrap: --claude, --skills, --repo <path>
 skills/{push,pull,init}/          the Claude Code plugin skills
-agents-skills/agent-sessions/     the portable Agent-Skills skill, with a bundled copy of the package
+.agents/skills/agent-sessions/     the portable Agent-Skills skill, with a bundled copy of the package
 tools/sync_bundle.py              keeps that copy identical (`--check` in CI)
 tests/                            python3 -m unittest discover -s tests
 .claude-plugin/                   plugin.json (name: sessions) and marketplace.json (name: agent-sessions)
 ```
 
-Test the Claude plugin from a checkout with `claude --plugin-dir /path/to/agent-sessions`. Test the portable skill by copying `agents-skills/agent-sessions` into `~/.agents/skills/`.
+Test the Claude plugin from a checkout with `claude --plugin-dir /path/to/agent-sessions`. Test the portable skill by copying `.agents/skills/agent-sessions` into `~/.agents/skills/`.
 
 ## Contributing an adapter
 

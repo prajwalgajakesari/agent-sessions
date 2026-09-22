@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Keep the portable skill's bundled copy of the package identical to the source.
 
-    python3 tools/sync_bundle.py          # copy agent_sessions/ + scripts into agents-skills/agent-sessions/scripts/
+    python3 tools/sync_bundle.py          # copy agent_sessions/ + scripts into .agents/skills/agent-sessions/scripts/
     python3 tools/sync_bundle.py --check  # exit 1 if the bundle differs (CI)
 """
 
@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC_PKG = ROOT / "agent_sessions"
 SRC_SCRIPTS = [ROOT / "scripts" / "sessions.py", ROOT / "scripts" / "sessions.sh"]
-BUNDLE = ROOT / "agents-skills" / "agent-sessions" / "scripts"
+BUNDLE = ROOT / ".agents" / "skills" / "agent-sessions" / "scripts"
 IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store")
 
 

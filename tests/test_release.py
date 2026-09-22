@@ -40,7 +40,7 @@ class TestVersionAgreement(unittest.TestCase):
         market = json.loads((ROOT / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
         self.assertEqual(plugin["version"], v)
         self.assertEqual(market["plugins"][0]["version"], v)
-        skill = (ROOT / "agents-skills" / "agent-sessions" / "SKILL.md").read_text(encoding="utf-8")
+        skill = (ROOT / ".agents" / "skills" / "agent-sessions" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn(f'version: "{v}"', skill)
         changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
         self.assertIn(f"## {v}", changelog)
@@ -58,13 +58,13 @@ class TestVersionAgreement(unittest.TestCase):
 
 class TestSkillFiles(unittest.TestCase):
     def test_shared_step_regions_are_identical(self):
-        portable = (ROOT / "agents-skills" / "agent-sessions" / "SKILL.md").read_text(encoding="utf-8")
+        portable = (ROOT / ".agents" / "skills" / "agent-sessions" / "SKILL.md").read_text(encoding="utf-8")
         for name in ("push", "pull", "init"):
             claude = (ROOT / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
             self.assertEqual(region(claude, name), region(portable, name), f"steps:{name} drifted between the Claude skill and the portable skill")
 
     def test_portable_frontmatter_uses_spec_fields_only(self):
-        text = (ROOT / "agents-skills" / "agent-sessions" / "SKILL.md").read_text(encoding="utf-8")
+        text = (ROOT / ".agents" / "skills" / "agent-sessions" / "SKILL.md").read_text(encoding="utf-8")
         fm = frontmatter(text)
         self.assertEqual(fm["name"], "agent-sessions")
         self.assertTrue(set(fm) <= SPEC_FIELDS, f"non-spec frontmatter fields: {set(fm) - SPEC_FIELDS}")
@@ -86,7 +86,7 @@ class TestBundle(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
 
     def test_bundle_wrapper_runs_standalone(self):
-        script = ROOT / "agents-skills" / "agent-sessions" / "scripts" / "sessions.py"
+        script = ROOT / ".agents" / "skills" / "agent-sessions" / "scripts" / "sessions.py"
         p = subprocess.run([sys.executable, str(script), "--version"], capture_output=True, text=True, cwd=str(ROOT.parent))
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertIn(agent_sessions.__version__, p.stdout)

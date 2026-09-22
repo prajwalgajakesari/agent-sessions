@@ -20,7 +20,7 @@ $Market = "prajwalgajakesari/agent-sessions"
 $Plugin = "sessions@agent-sessions"
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $Here
-$SkillSrc = Join-Path $RepoRoot "agents-skills\agent-sessions"
+$SkillSrc = Join-Path $RepoRoot ".agents\skills\agent-sessions"
 $SkillDst = Join-Path (Join-Path $HOME ".agents\skills") "agent-sessions"
 
 if (-not $Claude -and -not $Skills) { $Claude = $true; $Skills = $true }
