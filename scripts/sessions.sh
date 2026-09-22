@@ -6,8 +6,17 @@
 # Uses bash builtins only for the interpreter search so it still works when PATH
 # is unusual (Git Bash on Windows, minimal CI shells).
 
-here="${BASH_SOURCE[0]%/*}"
-[ "$here" = "${BASH_SOURCE[0]}" ] && here="."
+# Resolve our own directory. The script may be invoked with a Windows path (D:\x\scripts\sessions.sh)
+# from Git Bash, so accept either separator; cygpath normalises when it exists.
+src="${BASH_SOURCE[0]}"
+if command -v cygpath >/dev/null 2>&1; then
+  src="$(cygpath -u "$src" 2>/dev/null || printf '%s' "$src")"
+fi
+case "$src" in
+  */*)   here="${src%/*}" ;;
+  *\\*)  here="${src%\\*}" ;;
+  *)     here="." ;;
+esac
 here="$(cd "$here" 2>/dev/null && pwd)"
 
 try_py() {
