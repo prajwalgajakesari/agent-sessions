@@ -132,7 +132,7 @@ def cmd_locate(args: argparse.Namespace) -> Tuple[str, bool]:
     rep.kv("AUTHOR", f"{name} <{email}>" if email else name)
     rep.kv("HANDLE", handle)
     rep.kv("BRANCH", branch or "(detached HEAD)")
-    rep.kv("SESSION_DIR", os.path.join(root, SESSIONS_REL, dir_name))
+    rep.kv("SESSION_DIR", os.path.join(root, *SESSIONS_REL.split("/"), dir_name))
     rep.kv("REPUSH", "yes" if existing else "no")
     rep.kv("STARTED", sess.started.isoformat() if sess and sess.started else "?")
     rep.kv("RECORDS", f"{sess.record_count} ({sess.bad_lines} unparsable lines skipped)" if sess else "0")

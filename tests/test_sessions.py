@@ -566,7 +566,7 @@ class TestLocate(unittest.TestCase):
         self.assertIn("HANDLE: test-user", text)
         self.assertIn("first prompt about parsers", text)
         self.assertIn("  - a.py", text)
-        self.assertIn(f"{S.SESSIONS_REL}/2026-09-21_locate-me_test-user_{b.sid[:8]}", text)
+        self.assertIn(f"{S.SESSIONS_REL}/2026-09-21_locate-me_test-user_{b.sid[:8]}", text.replace("\\", "/"))
 
     def test_locate_falls_back_to_cwd_match(self):
         other = Builder(cwd="/elsewhere")
@@ -830,15 +830,23 @@ class TestInit(unittest.TestCase):
         self.assertIn("!.claude/sessions/", text)
 
 
-@unittest.skipUnless(shutil.which("bash"), "bash not available")
+def find_bash():
+    """Git Bash on Windows; System32\\bash.exe is the WSL stub and exits 1 without a distro."""
+    cands = [shutil.which("bash")]
+    if sys.platform == "win32":
+        cands = [p for p in (r"C:\Program Files\Git\bin\bash.exe", r"C:\Program Files\Git\usr\bin\bash.exe") if os.path.exists(p)] + cands
+    return next((c for c in cands if c), None)
+
+
+@unittest.skipUnless(find_bash(), "bash not available")
 class TestShim(unittest.TestCase):
     def test_shim_runs_python(self):
-        p = subprocess.run(["bash", str(SHIM), "--version"], capture_output=True, text=True)
-        self.assertEqual(p.returncode, 0)
+        p = subprocess.run([find_bash(), str(SHIM), "--version"], capture_output=True, text=True)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         self.assertIn(f"agent-sessions {VERSION}", p.stdout + p.stderr)
 
     def test_shim_without_python_reports_status_and_exits_zero(self):
-        bash = shutil.which("bash")
+        bash = find_bash()
         empty = tempfile.mkdtemp(prefix="cs-empty-")
         try:
             p = subprocess.run([bash, str(SHIM), "locate"], capture_output=True, text=True, env={"PATH": empty, "HOME": empty})

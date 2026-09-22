@@ -34,5 +34,10 @@ if [ "${#py[@]}" -eq 0 ]; then
   exit 0
 fi
 
+# Git Bash on Windows: hand the native launcher a path it understands (D:/x/y instead of /d/x/y)
+if command -v cygpath >/dev/null 2>&1; then
+  here="$(cygpath -m "$here" 2>/dev/null || printf '%s' "$here")"
+fi
+
 "${py[@]}" "$here/sessions.py" "$@"
 exit 0
