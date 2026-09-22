@@ -233,7 +233,9 @@ def _ref_for_export(agent: str, session_id: Optional[str], source: Optional[str]
                 return ref, a
         rep.kv("TRANSCRIPT_WARNING", f"no session {session_id} found in the {agent} store; exporting the given source")
     if source:
-        for a in adapters:
+        # a source path is self-describing: ask every adapter, even ones whose store is absent on this machine
+        pool = adapters if agent != "auto" else list(REGISTRY.values())
+        for a in pool:
             ref = a.ref_from_source(source)
             if ref:
                 return ref, a
